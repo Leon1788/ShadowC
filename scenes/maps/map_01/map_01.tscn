@@ -39,6 +39,6 @@ grid_x = 15
 grid_z = 11
 
 [node name="Merc" parent="." instance=ExtResource("4_merc")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.5, 0, 12.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.5, 0, 11.5)
 grid_x = 16
-grid_z = 12
+grid_z = 11

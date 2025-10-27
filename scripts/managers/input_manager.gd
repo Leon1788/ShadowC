@@ -1,5 +1,5 @@
 # input_manager.gd
-# Verwaltet Map-Input (Merc-Klicks, Bewegung, Stance)
+# Verwaltet Map-Input (Merc-Klicks, Bewegung, Stance, Facing)
 # Speicherort: res://scripts/managers/input_manager.gd
 
 extends Node
@@ -58,6 +58,12 @@ func _input(event: InputEvent):
 		elif event.keycode == KEY_3:
 			handle_stance_key(2)
 			get_tree().root.set_input_as_handled()
+		elif event.keycode == KEY_Q:
+			handle_rotate_left()
+			get_tree().root.set_input_as_handled()
+		elif event.keycode == KEY_E:
+			handle_rotate_right()
+			get_tree().root.set_input_as_handled()
 	
 	if event is InputEventMouseMotion:
 		if path_renderer and merc_manager.get_selected_merc():
@@ -99,11 +105,12 @@ func handle_left_click(screen_pos: Vector2) -> void:
 		merc_selected.emit(hit_merc)
 		var merc_pos = hit_merc.get_grid_position()
 		print("[InputManager] Merc selektiert: %s" % hit_merc.merc_name)
-		print("[InputManager] Position: Grid (%d, %d) | AP: %d/%d | Stance: %s" % [
+		print("[InputManager] Position: Grid (%d, %d) | AP: %d/%d | Stance: %s | Facing: %s" % [
 			merc_pos.x, merc_pos.y, 
 			hit_merc.get_current_ap(), 
 			hit_merc.get_max_ap(),
-			hit_merc.stance_component.get_stance_name()
+			hit_merc.stance_component.get_stance_name(),
+			hit_merc.get_facing_name()
 		])
 	else:
 		# Bewegung zum Grid-Tile
@@ -152,6 +159,44 @@ func handle_stance_key(stance: int) -> void:
 		])
 	else:
 		print("[InputManager] Stance-Wechsel fehlgeschlagen!")
+
+func handle_rotate_left() -> void:
+	var selected_merc = merc_manager.get_selected_merc()
+	
+	if not selected_merc:
+		print("[InputManager] Kein Merc selektiert!")
+		return
+	
+	print("[InputManager] Q: Drehen links")
+	
+	if selected_merc.rotate_left():
+		print("[InputManager] Rotation erfolgreich!")
+		print("[InputManager] Facing: %s | AP: %d/%d" % [
+			selected_merc.get_facing_name(),
+			selected_merc.get_current_ap(),
+			selected_merc.get_max_ap()
+		])
+	else:
+		print("[InputManager] Rotation fehlgeschlagen!")
+
+func handle_rotate_right() -> void:
+	var selected_merc = merc_manager.get_selected_merc()
+	
+	if not selected_merc:
+		print("[InputManager] Kein Merc selektiert!")
+		return
+	
+	print("[InputManager] E: Drehen rechts")
+	
+	if selected_merc.rotate_right():
+		print("[InputManager] Rotation erfolgreich!")
+		print("[InputManager] Facing: %s | AP: %d/%d" % [
+			selected_merc.get_facing_name(),
+			selected_merc.get_current_ap(),
+			selected_merc.get_max_ap()
+		])
+	else:
+		print("[InputManager] Rotation fehlgeschlagen!")
 
 func screen_to_grid(screen_pos: Vector2) -> Vector2i:
 	if not camera_manager:

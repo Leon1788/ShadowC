@@ -36,6 +36,7 @@ var ap_component: APComponent = null
 var health_component: HealthComponent = null
 var selection_component: SelectionComponent = null
 var stance_component: StanceComponent = null
+var facing_component: FacingComponent = null
 
 # References
 var capsule_mesh: MeshInstance3D = null
@@ -43,6 +44,7 @@ var collision_shape_node: CollisionShape3D = null
 var capsule_shape: CapsuleShape3D = null
 var character_body: CharacterBody3D = null
 var grid_manager: GridManager = null
+var arrow_visual: MeshInstance3D = null
 
 # Capsule Base Daten (aus merc.tscn)
 var capsule_radius: float = 0.3
@@ -60,6 +62,9 @@ func _process(delta: float):
 	
 	if movement_component and movement_component.get_is_moving():
 		movement_component.update_movement(delta)
+	
+	# Update Arrow Rotation jeden Frame
+	update_arrow_rotation()
 
 func update_editor_position() -> void:
 	if not Engine.is_editor_hint():
@@ -92,6 +97,9 @@ func setup_merc() -> void:
 	
 	# Initialisiere Komponenten
 	initialize_components()
+	
+	# Erstelle Arrow Visual
+	create_arrow_visual()
 
 func create_components() -> void:
 	# APComponent
@@ -113,6 +121,11 @@ func create_components() -> void:
 	stance_component = StanceComponent.new()
 	stance_component.name = "StanceComponent"
 	add_child(stance_component)
+	
+	# FacingComponent
+	facing_component = FacingComponent.new()
+	facing_component.name = "FacingComponent"
+	add_child(facing_component)
 	
 	# MovementComponent (braucht andere Komponenten)
 	movement_component = MovementComponent.new()
@@ -136,6 +149,10 @@ func initialize_components() -> void:
 	stance_component.initialize(ap_component, grid_manager, self)
 	stance_component.stance_changed.connect(_on_stance_changed)
 	
+	# Facing (braucht AP)
+	facing_component.initialize(ap_component, self)
+	facing_component.facing_changed.connect(_on_facing_changed)
+	
 	# Movement (braucht AP + Stance + GridManager)
 	movement_component.initialize(grid_x, grid_z, self, ap_component, stance_component, grid_manager)
 	movement_component.movement_started.connect(_on_movement_started)
@@ -147,6 +164,9 @@ func initialize_components() -> void:
 	
 	# Initiale Capsule-Höhe setzen
 	update_capsule_for_stance()
+	
+	# Initiale Arrow Rotation
+	update_arrow_rotation()
 
 func set_grid_manager(grid_mgr: GridManager) -> void:
 	grid_manager = grid_mgr
@@ -193,6 +213,38 @@ func update_capsule_for_stance() -> void:
 		# CollisionShape3D Node Position.Y = Height/2 damit Bottom bei Y=0 bleibt!
 		var shape_y = stance_height / 2.0
 		collision_shape_node.position.y = shape_y
+
+func create_arrow_visual() -> void:
+	# Erstelle Arrow Indicator
+	arrow_visual = MeshInstance3D.new()
+	arrow_visual.name = "ArrowVisual"
+	add_child(arrow_visual)
+	
+	# Erstelle Cone (Pfeil) - oben spitz, unten breit
+	var arrow_mesh = CylinderMesh.new()
+	arrow_mesh.height = 1.2
+	arrow_mesh.top_radius = 0.0  # Spitze
+	arrow_mesh.bottom_radius = 0.3  # Breitere Base
+	arrow_visual.mesh = arrow_mesh
+	
+	# Material - rot für Facing
+	var arrow_material = StandardMaterial3D.new()
+	arrow_material.albedo_color = Color.RED
+	arrow_visual.set_surface_override_material(0, arrow_material)
+	
+	# Position über Capsule
+	arrow_visual.position.y = 2.2
+	
+	# WICHTIG: Drehe Cone 90° um X damit er nach vorne zeigt statt nach oben
+	arrow_visual.rotation.x = deg_to_rad(90)
+
+func update_arrow_rotation() -> void:
+	if not arrow_visual or not facing_component:
+		return
+	
+	# Drehe Arrow basierend auf Facing
+	var angle = deg_to_rad(facing_component.get_facing_angle())
+	arrow_visual.rotation.y = angle
 
 # ============ PUBLIC API ============
 
@@ -281,6 +333,27 @@ func get_stance_height() -> float:
 		return stance_component.get_stance_height()
 	return capsule_base_height
 
+# Facing
+func rotate_left() -> bool:
+	if facing_component:
+		return facing_component.rotate_left()
+	return false
+
+func rotate_right() -> bool:
+	if facing_component:
+		return facing_component.rotate_right()
+	return false
+
+func get_facing_direction() -> int:
+	if facing_component:
+		return facing_component.get_facing_direction()
+	return 0
+
+func get_facing_name() -> String:
+	if facing_component:
+		return facing_component.get_facing_name()
+	return "North"
+
 func get_merc_name() -> String:
 	return merc_name
 
@@ -294,6 +367,9 @@ func _on_died() -> void:
 
 func _on_stance_changed(stance: int) -> void:
 	update_capsule_for_stance()
+
+func _on_facing_changed(direction: int) -> void:
+	update_arrow_rotation()
 
 func _on_movement_started(target: Vector2i) -> void:
 	pass
