@@ -1,5 +1,5 @@
 # merc_manager.gd
-# Verwaltet alle Söldner in der Map - OHNE Spawning
+# Verwaltet alle Söldner in der Map
 # Speicherort: res://scripts/managers/merc_manager.gd
 
 extends Node
@@ -25,9 +25,10 @@ func initialize(grid_mgr: GridManager = null) -> void:
 	print("[MercManager] Bereit")
 
 func register_merc(merc) -> void:
-	if merc:
+	if merc and merc is MercEntity:
 		mercs[merc.merc_name] = merc
-		print("[MercManager] Registered: %s at Grid (%d, %d)" % [merc.merc_name, merc.grid_x, merc.grid_z])
+		var pos = merc.get_grid_position()
+		print("[MercManager] Registered: %s at Grid (%d, %d)" % [merc.merc_name, pos.x, pos.y])
 
 func get_merc(merc_name: String):
 	return mercs.get(merc_name, null)
@@ -46,7 +47,11 @@ func print_mercs() -> void:
 	for merc_name in mercs.keys():
 		var merc = mercs[merc_name]
 		var pos = merc.get_grid_position()
-		print("  - %s: Grid (%d, %d) | Health: %d/%d | AP: %d/%d" % [merc_name, pos.x, pos.y, merc.health, merc.max_health, merc.current_ap, merc.max_ap])
+		var current_ap = merc.get_current_ap()
+		var max_ap = merc.get_max_ap()
+		var current_health = merc.get_current_health()
+		var max_health = merc.get_max_health()
+		print("  - %s: Grid (%d, %d) | Health: %d/%d | AP: %d/%d" % [merc_name, pos.x, pos.y, current_health, max_health, current_ap, max_ap])
 	print("================")
 
 func select_merc(merc) -> void:

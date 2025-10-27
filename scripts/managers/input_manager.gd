@@ -17,7 +17,7 @@ var path_cache: Dictionary = {}
 var cached_merc = null
 var cached_merc_pos: Vector2i = Vector2i(-1, -1)
 
-signal merc_selected(merc: Merc)
+signal merc_selected(merc: MercEntity)
 signal merc_move_requested(target_grid: Vector2i)
 signal grid_clicked(grid_pos: Vector2i)
 
@@ -44,14 +44,13 @@ func _input(event: InputEvent):
 			print("[InputManager] SPACE erkannt!")
 			handle_spacebar()
 		elif event.keycode == KEY_1:
-			handle_stance_key(0)  # Standing
+			handle_stance_key(0)
 		elif event.keycode == KEY_2:
-			handle_stance_key(1)  # Crouch
+			handle_stance_key(1)
 		elif event.keycode == KEY_3:
-			handle_stance_key(2)  # Prone
+			handle_stance_key(2)
 	
 	if event is InputEventMouseMotion:
-		# Nur Preview wenn Merc selected
 		if path_renderer and merc_manager.get_selected_merc():
 			preview_path(event.position)
 
@@ -93,7 +92,7 @@ func handle_left_click(screen_pos: Vector2) -> void:
 		if merc_manager.get_selected_merc():
 			var selected_merc = merc_manager.get_selected_merc()
 			var start = selected_merc.get_grid_position()
-			var max_ap = selected_merc.current_ap
+			var max_ap = selected_merc.get_current_ap()
 			
 			# Route mit AP Limit finden
 			var path = pathfinder.find_path(start, grid_pos, max_ap)
@@ -148,7 +147,7 @@ func preview_path(screen_pos: Vector2) -> void:
 		cached_merc_pos = selected_merc.get_grid_position()
 	
 	var start = selected_merc.get_grid_position()
-	var max_ap = selected_merc.current_ap
+	var max_ap = selected_merc.get_current_ap()
 	var cache_key = str(start) + "_" + str(target_grid)
 	
 	var full_path

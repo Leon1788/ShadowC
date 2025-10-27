@@ -1,5 +1,5 @@
 # map_01.gd
-# Map Orchestrator - registriert bestehende Mercs
+# Map Orchestrator - mit Component-System
 # Speicherort: res://scenes/maps/map_01/map_01.gd
 
 extends Node3D
@@ -14,7 +14,7 @@ var round_manager: RoundManager = null
 
 func _ready():
 	print("\n==================================================")
-	print("MAP_01 STARTET")
+	print("MAP_01 STARTET - Component System")
 	print("==================================================\n")
 	
 	setup_camera()
@@ -90,12 +90,9 @@ func register_mercs_from_scene() -> void:
 	
 	var merc_count = 0
 	
-	# Suche alle Nodes mit Merc-Klasse
+	# Suche alle Nodes die von MercEntity erben
 	for child in get_children():
-		if child is Merc:
-			merc_manager.register_merc(child)
-			merc_count += 1
-		elif child is Merc2:
+		if child is MercEntity:
 			merc_manager.register_merc(child)
 			merc_count += 1
 	
