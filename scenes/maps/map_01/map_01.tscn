@@ -1,0 +1,28 @@
+[gd_scene load_steps=4 format=3 uid="uid://cjgnijbl8taeu"]
+
+[ext_resource type="Script" uid="uid://dms45agrr2mme" path="res://scenes/maps/map_01/map_01.gd" id="1_bfy3v"]
+[ext_resource type="Script" uid="uid://7nt4s2qfqnou" path="res://scripts/systems/grid_visual.gd" id="2_gridvisual"]
+[ext_resource type="PackedScene" uid="uid://cover001scene" path="res://scenes/entities/cover/cover.tscn" id="3_bqo13"]
+
+[node name="map_01" type="Node3D"]
+script = ExtResource("1_bfy3v")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.707107, -0.408248, 0.57735, 0, 0.816497, 0.57735, -1, -0.408248, 0.57735, 20, 30, 20)
+current = true
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 20, 10)
+
+[node name="GridVisual" type="Node3D" parent="."]
+script = ExtResource("2_gridvisual")
+line_color = Color(1, 1, 0.580392, 1)
+
+[node name="Cover" parent="." instance=ExtResource("3_bqo13")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 0)
+grid_x = 4
+
+[node name="Cover2" parent="." instance=ExtResource("3_bqo13")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, 11)
+grid_x = 15
+grid_z = 11

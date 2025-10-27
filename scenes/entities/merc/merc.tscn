@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://merc001scene"]
+
+[ext_resource type="Script" path="res://scripts/entities/merc.gd" id="1_merc"]
+
+[node name="Merc" type="Node3D"]
+script = ExtResource("1_merc")
+merc_name = "Merc_01"
+grid_x = 10
+grid_z = 10
+health = 100
+max_health = 100
