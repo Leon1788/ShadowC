@@ -2,6 +2,7 @@
 # Söldner - BLAU
 # Speicherort: res://scripts/entities/merc.gd
 
+@tool
 extends MercEntity
 
 class_name Merc

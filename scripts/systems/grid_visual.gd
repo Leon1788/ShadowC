@@ -1,5 +1,5 @@
 # grid_visual.gd
-# Grid Visualisierung mit Editor-Properties
+# Grid Visualisierung - @tool für Editor Live-Preview
 # Speicherort: res://scripts/systems/grid_visual.gd
 
 @tool
@@ -7,7 +7,6 @@ extends Node3D
 
 class_name GridVisual
 
-# Editor Properties
 @export var grid_width: int = 40:
 	set(value):
 		grid_width = max(1, value)
@@ -39,18 +38,22 @@ class_name GridVisual
 		line_color = value
 		update_grid()
 
-# Internal
 var mesh_instance: MeshInstance3D = null
 var grid_lines: MeshInstance3D = null
-var blocked_tiles: PackedInt32Array = []
 
 func _ready():
-	print("[GridVisual] Initialisiere...")
-	create_grid()
-	print("[GridVisual] Bereit")
+	# Editor: create_grid() sofort
+	if Engine.is_editor_hint():
+		create_grid()
+		return
+	
+	# Runtime: create_grid() wenn initialized wird
+	print("[GridVisual] _ready() Runtime")
 
 func initialize(map_root: Node3D = null, grid_mgr: GridManager = null) -> void:
-	print("[GridVisual] Initialize aufgerufen")
+	if Engine.is_editor_hint():
+		return
+	print("[GridVisual] initialize() Runtime")
 	create_grid()
 
 func update_grid() -> void:
@@ -73,8 +76,7 @@ func create_grid_mesh() -> void:
 	
 	for z in range(grid_height):
 		for x in range(grid_width):
-			var color = tile_color
-			surface_tool.set_material(create_material(color))
+			surface_tool.set_material(create_material(tile_color))
 			
 			var x0 = x * tile_size
 			var x1 = (x + 1) * tile_size
@@ -97,21 +99,16 @@ func create_grid_mesh() -> void:
 	add_child(mesh_instance)
 
 func create_grid_lines() -> void:
-	var points = PackedVector3Array()
-	
-	for x in range(grid_width + 1):
-		points.append(Vector3(x * tile_size, 0.02, 0))
-		points.append(Vector3(x * tile_size, 0.02, grid_height * tile_size))
-	
-	for z in range(grid_height + 1):
-		points.append(Vector3(0, 0.02, z * tile_size))
-		points.append(Vector3(grid_width * tile_size, 0.02, z * tile_size))
-	
 	var immediate_mesh = ImmediateMesh.new()
 	immediate_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
 	
-	for point in points:
-		immediate_mesh.surface_add_vertex(point)
+	for x in range(grid_width + 1):
+		immediate_mesh.surface_add_vertex(Vector3(x * tile_size, 0.02, 0))
+		immediate_mesh.surface_add_vertex(Vector3(x * tile_size, 0.02, grid_height * tile_size))
+	
+	for z in range(grid_height + 1):
+		immediate_mesh.surface_add_vertex(Vector3(0, 0.02, z * tile_size))
+		immediate_mesh.surface_add_vertex(Vector3(grid_width * tile_size, 0.02, z * tile_size))
 	
 	immediate_mesh.surface_end()
 	
@@ -131,9 +128,3 @@ func create_material(color: Color) -> StandardMaterial3D:
 	material.albedo_color = color
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
 	return material
-
-func get_grid_size() -> Vector2i:
-	return Vector2i(grid_width, grid_height)
-
-func get_tile_size() -> float:
-	return tile_size

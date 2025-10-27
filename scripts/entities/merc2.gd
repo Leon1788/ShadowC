@@ -2,6 +2,7 @@
 # Söldner 2 - ROT
 # Speicherort: res://scripts/entities/merc2.gd
 
+@tool
 extends MercEntity
 
 class_name Merc2

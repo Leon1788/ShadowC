@@ -33,7 +33,7 @@ func _process(delta: float):
 func setup_managers() -> void:
 	print("[Map01] Initialisiere Manager...")
 	
-	# GridManager
+	# GridManager FIRST
 	grid_manager = GridManager.new()
 	grid_manager.name = "GridManager"
 	add_child(grid_manager)
@@ -46,11 +46,11 @@ func setup_managers() -> void:
 	add_child(merc_manager)
 	merc_manager.initialize()
 	
-	# GridManager an MercManager übergeben
+	# GridManager <-> MercManager Verbindung
 	merc_manager.set_grid_manager(grid_manager)
 	grid_manager.set_merc_manager(merc_manager)
 	
-	# Suche alle Mercs in der Szene und füge sie hinzu
+	# Suche alle Mercs in der Szene und registriere sie
 	var merc_nodes = find_all_mercs()
 	for merc in merc_nodes:
 		merc_manager.add_merc(merc)
@@ -68,17 +68,19 @@ func setup_managers() -> void:
 	else:
 		print("[Map01] FEHLER: Camera3D nicht in Szene!")
 	
+	# GridVisual - bereits in Szene vorhanden, nur initialisieren
+	grid_visual = get_node_or_null("GridVisual")
+	if grid_visual:
+		grid_visual.initialize(self, grid_manager)
+		print("[Map01] GridVisual aus Szene initialisiert")
+	else:
+		print("[Map01] FEHLER: GridVisual nicht in Szene!")
+	
 	# PathRenderer
 	path_renderer = PathRenderer.new()
 	path_renderer.name = "PathRenderer"
 	add_child(path_renderer)
 	path_renderer.initialize(self, grid_manager)
-	
-	# GridVisual
-	grid_visual = GridVisual.new()
-	grid_visual.name = "GridVisual"
-	add_child(grid_visual)
-	grid_visual.initialize(self, grid_manager)
 	
 	# InputManager (braucht alle anderen)
 	input_manager = InputManager.new()
@@ -87,7 +89,7 @@ func setup_managers() -> void:
 	input_manager.initialize(merc_manager, camera_manager, path_renderer, grid_manager, self)
 	
 	# GridHighlighter
-	var grid_highlighter = GridHighlighter.new()
+	grid_highlighter = GridHighlighter.new()
 	grid_highlighter.name = "GridHighlighter"
 	add_child(grid_highlighter)
 	grid_highlighter.initialize(camera_manager.camera, merc_manager.pathfinder, merc_manager)
@@ -154,4 +156,5 @@ func print_map_status() -> void:
 	print("Input: %s" % ("OK" if input_manager else "MISSING"))
 	print("Rounds: %s" % ("OK" if round_manager else "MISSING"))
 	print("Path Renderer: %s" % ("OK" if path_renderer else "MISSING"))
+	print("Grid Visual: %s" % ("OK" if grid_visual else "MISSING"))
 	print("==================\n")

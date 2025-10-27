@@ -1,5 +1,6 @@
 # merc_entity.gd
 # Base-Klasse für alle Mercs - orchestriert Komponenten
+# @tool für Editor Live-Preview
 # Speicherort: res://scripts/entities/merc_entity.gd
 
 @tool
@@ -12,13 +13,17 @@ class_name MercEntity
 @export var grid_x: int = 0:
 	set(value):
 		grid_x = clamp(value, 0, 39)
-		if movement_component:
+		if Engine.is_editor_hint():
+			update_editor_position()
+		elif movement_component:
 			movement_component.set_grid_position(grid_x, grid_z)
 
 @export var grid_z: int = 0:
 	set(value):
 		grid_z = clamp(value, 0, 39)
-		if movement_component:
+		if Engine.is_editor_hint():
+			update_editor_position()
+		elif movement_component:
 			movement_component.set_grid_position(grid_x, grid_z)
 
 @export var health: int = 100
@@ -55,6 +60,17 @@ func _process(delta: float):
 	
 	if movement_component and movement_component.get_is_moving():
 		movement_component.update_movement(delta)
+
+func update_editor_position() -> void:
+	if not Engine.is_editor_hint():
+		return
+	
+	# Setze Node Position auf Grid
+	var world_pos = Vector3(grid_x * 1.0 + 0.5, 0, grid_z * 1.0 + 0.5)
+	position = world_pos
+	
+	# Aktualisiere auch Capsule Position damit Mesh nicht unter Erde ist
+	update_capsule_for_stance()
 
 func setup_merc() -> void:
 	# Suche bestehende Nodes
@@ -140,10 +156,24 @@ func set_grid_manager(grid_mgr: GridManager) -> void:
 		stance_component.set_grid_manager(grid_mgr)
 
 func update_capsule_for_stance() -> void:
-	if not stance_component or not character_body:
-		return
+	# Lese Capsule Daten falls noch nicht gelesen (wichtig für Editor)
+	if not capsule_shape:
+		character_body = get_node_or_null("MercBody")
+		if character_body:
+			capsule_mesh = character_body.get_node_or_null("MercMesh")
+			var collider_node = character_body.get_node_or_null("MercCollider")
+			if collider_node and collider_node is CollisionShape3D:
+				collision_shape_node = collider_node
+				capsule_shape = collider_node.shape as CapsuleShape3D
+		
+		if capsule_shape:
+			capsule_radius = capsule_shape.radius
+			capsule_base_height = capsule_shape.height
 	
-	var stance_height = stance_component.get_stance_height()
+	# Wenn kein StanceComponent (Editor), nutze Base Height
+	var stance_height = capsule_base_height
+	if stance_component:
+		stance_height = stance_component.get_stance_height()
 	
 	# Update Mesh Height UND Radius (auf merc.tscn Base-Wert)
 	if capsule_mesh and capsule_mesh.mesh is CapsuleMesh:
