@@ -15,6 +15,7 @@ var grid_size: Vector2i = Vector2i(GRID_SIZE, GRID_SIZE)
 var tile_size: float = TILE_SIZE
 var grid_data: Dictionary = {}  # Vector2i -> tile_type
 var tilemap: TileMap = null
+var merc_manager: MercManager = null
 
 func _ready():
 	pass
@@ -34,6 +35,9 @@ func initialize(scene_root: Node3D) -> bool:
 	print("[GridManager] Tiles in Grid: %d" % grid_data.size())
 	
 	return true
+
+func set_merc_manager(merc_mgr: MercManager) -> void:
+	merc_manager = merc_mgr
 
 func initialize_empty_grid() -> void:
 	for z in range(grid_size.y):
@@ -103,10 +107,46 @@ func is_walkable(grid_pos: Vector2i) -> bool:
 	
 	return grid_data[grid_pos]["walkable"]
 
+func is_tile_free(grid_pos: Vector2i, ignore_merc = null) -> bool:
+	# Tile muss valid und walkable sein
+	if not is_walkable(grid_pos):
+		return false
+	
+	# Prüfe ob Merc auf diesem Tile ist
+	if merc_manager:
+		for merc in merc_manager.get_all_mercs():
+			if merc == ignore_merc:
+				continue
+			
+			var merc_pos = merc.get_grid_position()
+			if merc_pos == grid_pos:
+				return false
+			
+			# Bei Prone: Prüfe auch das hintere Tile
+			if merc.stance_component and merc.stance_component.is_prone():
+				var rear_tile = Vector2i(merc_pos.x, merc_pos.y + 1)
+				if rear_tile == grid_pos:
+					return false
+	
+	return true
+
 func get_tile_at(grid_pos: Vector2i) -> Dictionary:
 	if grid_data.has(grid_pos):
 		return grid_data[grid_pos]
 	return {}
+
+func get_occupied_tiles(merc) -> Array:
+	if not merc:
+		return []
+	
+	var tiles = [merc.get_grid_position()]
+	
+	# Bei Prone: Auch hinteres Tile
+	if merc.stance_component and merc.stance_component.is_prone():
+		var merc_pos = merc.get_grid_position()
+		tiles.append(Vector2i(merc_pos.x, merc_pos.y + 1))
+	
+	return tiles
 
 func grid_to_world(grid_pos: Vector2i, floor_level: int = 0) -> Vector3:
 	var x = grid_pos.x * tile_size
@@ -121,6 +161,7 @@ func world_to_grid(world_pos: Vector3) -> Vector2i:
 
 func get_grid_bounds() -> Rect2i:
 	return Rect2i(0, 0, grid_size.x, grid_size.y)
+
 
 func get_all_walkable_tiles() -> Array:
 	var walkable_tiles = []

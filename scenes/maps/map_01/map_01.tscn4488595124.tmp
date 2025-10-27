@@ -25,26 +25,16 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 0)
 grid_x = 4
 
 [node name="Cover2" parent="." instance=ExtResource("3_bqo13")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 0, 11)
-grid_x = 17
-grid_z = 11
-
-[node name="Merc" parent="." instance=ExtResource("4_merc")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 2.30563, 13.9896)
-grid_x = 14
-grid_z = 10
-
-[node name="Merc2" parent="." instance=ExtResource("5_merc2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.5, 0, 13.5)
-grid_x = 13
-grid_z = 13
-
-[node name="Cover3" parent="." instance=ExtResource("3_bqo13")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, 10)
-grid_x = 16
-grid_z = 10
-
-[node name="Cover4" parent="." instance=ExtResource("3_bqo13")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, 11)
 grid_x = 15
 grid_z = 11
+
+[node name="Merc" parent="." instance=ExtResource("4_merc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 0, 11.5)
+grid_x = 14
+grid_z = 11
+
+[node name="Merc2" parent="." instance=ExtResource("5_merc2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.5, 0, 13.5)
+grid_x = 11
+grid_z = 13

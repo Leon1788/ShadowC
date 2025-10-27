@@ -49,6 +49,10 @@ func _ready():
 	create_grid()
 	print("[GridVisual] Bereit")
 
+func initialize(map_root: Node3D = null, grid_mgr: GridManager = null) -> void:
+	print("[GridVisual] Initialize aufgerufen")
+	create_grid()
+
 func update_grid() -> void:
 	if is_node_ready():
 		create_grid()

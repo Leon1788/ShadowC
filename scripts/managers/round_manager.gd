@@ -11,6 +11,7 @@ var current_round: int = 0
 
 signal round_started(round: int)
 signal round_ended(round: int)
+signal new_turn()
 
 func _ready():
 	pass
@@ -19,6 +20,9 @@ func initialize(merc_mgr: MercManager) -> void:
 	print("[RoundManager] Initialisiere...")
 	merc_manager = merc_mgr
 	print("[RoundManager] Bereit")
+
+func update(delta: float) -> void:
+	pass
 
 func start_game() -> void:
 	print("[RoundManager] Spiel startet!")
@@ -32,8 +36,9 @@ func reset_all_ap() -> void:
 	for merc in merc_manager.get_all_mercs():
 		merc.reset_ap()
 	
-	print("[RoundManager] === RUNDE %d | AP RESET ===" % current_round)
+	print("\n[RoundManager] ======== RUNDE %d | AP RESET ========" % current_round)
 	round_started.emit(current_round)
+	new_turn.emit()
 
 func get_round_number() -> int:
 	return current_round

@@ -21,6 +21,8 @@ var move_speed: float = 5.0
 var current_path_idx: int = 0
 
 var ap_component: APComponent = null
+var stance_component: StanceComponent = null
+var grid_manager: GridManager = null
 var parent_node: Node3D = null
 
 signal movement_started(target: Vector2i)
@@ -30,24 +32,27 @@ signal position_changed(grid_pos: Vector2i)
 func _ready():
 	pass
 
-func initialize(grid_pos_x: int, grid_pos_z: int, parent: Node3D, ap_comp: APComponent = null) -> void:
+func initialize(grid_pos_x: int, grid_pos_z: int, parent: Node3D, ap_comp: APComponent = null, stance_comp: StanceComponent = null, grid_mgr: GridManager = null) -> void:
 	grid_x = grid_pos_x
 	grid_z = grid_pos_z
 	parent_node = parent
 	ap_component = ap_comp
+	stance_component = stance_comp
+	grid_manager = grid_mgr
 	
 	update_position()
 	print("[MovementComponent] Initialisiert | Grid: (%d, %d)" % [grid_x, grid_z])
 
 func update_position() -> void:
 	world_position = grid_to_world(Vector2i(grid_x, grid_z))
-	if parent_node:
-		parent_node.position = world_position
+	# NICHT parent_node.position setzen! Das passiert in MercEntity.initialize_components()
+	# if parent_node:
+	#	parent_node.position = world_position
 
 func grid_to_world(grid_pos: Vector2i) -> Vector3:
 	var world_x = grid_pos.x * TILE_SIZE + TILE_SIZE / 2.0
 	var world_z = grid_pos.y * TILE_SIZE + TILE_SIZE / 2.0
-	var world_y = CAPSULE_HEIGHT / 2.0
+	var world_y = 0.0
 	return Vector3(world_x, world_y, world_z)
 
 func get_grid_position() -> Vector2i:
@@ -61,6 +66,11 @@ func set_grid_position(new_x: int, new_z: int) -> void:
 
 func move_to(path: Array) -> bool:
 	if path.is_empty():
+		return false
+	
+	# Prüfe ob alle Tiles in Path frei sind (besonders bei Prone)
+	if not validate_path_for_stance(path):
+		print("[MovementComponent] Path blockiert durch Stance-Tiles!")
 		return false
 	
 	var cost = (path.size() - 1) * AP_PER_TILE
@@ -83,6 +93,20 @@ func move_to(path: Array) -> bool:
 	
 	return true
 
+func validate_path_for_stance(path: Array) -> bool:
+	if not stance_component or not grid_manager:
+		return true
+	
+	# Bei Prone: Prüfe dass das hintere Tile während gesamter Bewegung frei bleibt
+	if stance_component.is_prone():
+		for tile in path:
+			var rear_tile = Vector2i(tile.x, tile.y + 1)
+			if not grid_manager.is_tile_free(rear_tile, null):
+				print("[MovementComponent] Prone-Rear-Tile blockiert: %s" % rear_tile)
+				return false
+	
+	return true
+
 func update_movement(delta: float) -> void:
 	if move_path.is_empty() or current_path_idx >= move_path.size():
 		is_moving = false
@@ -96,6 +120,11 @@ func update_movement(delta: float) -> void:
 	var current_world = parent_node.position
 	var distance = current_world.distance_to(target_world)
 	
+	# Berechne Speed mit Stance-Multiplier
+	var current_speed = move_speed
+	if stance_component:
+		current_speed = move_speed * stance_component.get_movement_speed_multiplier()
+	
 	if distance < 0.1:
 		# Tile erreicht
 		grid_x = target_grid.x
@@ -104,12 +133,18 @@ func update_movement(delta: float) -> void:
 		position_changed.emit(get_grid_position())
 		return
 	
-	# Lerp zu nächstem Tile
+	# Lerp zu nächstem Tile mit Speed-Multiplier
 	var direction = (target_world - current_world).normalized()
-	parent_node.position += direction * move_speed * delta
+	parent_node.position += direction * current_speed * delta
 
 func get_is_moving() -> bool:
 	return is_moving
 
 func get_current_path() -> Array:
 	return move_path
+
+func get_current_speed() -> float:
+	var base_speed = move_speed
+	if stance_component:
+		return base_speed * stance_component.get_movement_speed_multiplier()
+	return base_speed

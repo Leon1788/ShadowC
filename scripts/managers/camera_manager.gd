@@ -7,7 +7,7 @@ extends Node
 class_name CameraManager
 
 var camera: Camera3D = null
-var grid_manager: GridManager = null
+var map_root: Node3D = null
 
 var camera_speed: float = 10.0
 var height_speed: float = 5.0
@@ -20,13 +20,20 @@ var current_position: Vector3 = Vector3.ZERO
 func _ready():
 	pass
 
-func initialize(camera_ref: Camera3D, grid_mgr: GridManager) -> void:
+func initialize(camera_ref: Camera3D, map: Node3D = null) -> void:
 	print("[CameraManager] Initialisiere...")
+	
 	camera = camera_ref
-	grid_manager = grid_mgr
+	map_root = map
+	
+	if not camera:
+		print("[CameraManager] FEHLER: Camera3D null!")
+		return
+	
 	current_position = camera.global_position
 	target_position = current_position
-	print("[CameraManager] Bereit")
+	
+	print("[CameraManager] Bereit | Position: %.1f, %.1f, %.1f" % [target_position.x, target_position.y, target_position.z])
 
 func _process(delta: float) -> void:
 	if not camera:
@@ -67,19 +74,15 @@ func update_camera(delta: float) -> void:
 	camera.global_position = current_position
 
 func reset_camera() -> void:
-	if not grid_manager:
-		target_position = Vector3(20.0, 20.0, 20.0)
-		return
-	
-	var grid_size_float = Vector2(grid_manager.grid_size)
-	var grid_center = grid_size_float * 0.5
-	target_position = Vector3(grid_center.x, 20.0, grid_center.y)
+	target_position = Vector3(20.0, 20.0, 20.0)
 	current_position = target_position
 	if camera:
 		camera.global_position = current_position
 
 func get_camera_position() -> Vector3:
-	return camera.global_position
+	if camera:
+		return camera.global_position
+	return current_position
 
 func set_camera_target_position(pos: Vector3) -> void:
 	target_position = pos

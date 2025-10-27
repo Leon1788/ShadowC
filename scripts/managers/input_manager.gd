@@ -1,5 +1,5 @@
 # input_manager.gd
-# Verwaltet Map-Input (Merc-Klicks, Bewegung)
+# Verwaltet Map-Input (Merc-Klicks, Bewegung, Stance)
 # Speicherort: res://scripts/managers/input_manager.gd
 
 extends Node
@@ -7,10 +7,11 @@ extends Node
 class_name InputManager
 
 var merc_manager: MercManager = null
-var camera: Camera3D = null
+var camera_manager: CameraManager = null
 var path_renderer: PathRenderer = null
-var pathfinder: Pathfinder = null
-var round_manager: RoundManager = null
+var grid_manager: GridManager = null
+var map_root: Node3D = null
+
 var last_preview_pos: Vector2i = Vector2i(-1, -1)
 var last_preview_grid: Vector2i = Vector2i(-1, -1)
 var path_cache: Dictionary = {}
@@ -24,47 +25,57 @@ signal grid_clicked(grid_pos: Vector2i)
 func _ready():
 	pass
 
-func initialize(merc_mgr: MercManager, cam: Camera3D, path_rend: PathRenderer = null, pf: Pathfinder = null, round_mgr: RoundManager = null) -> void:
+func initialize(merc_mgr: MercManager, camera_mgr: CameraManager, path_rend: PathRenderer = null, grid_mgr: GridManager = null, map: Node3D = null) -> void:
 	print("[InputManager] Initialisiere...")
 	merc_manager = merc_mgr
-	camera = cam
+	camera_manager = camera_mgr
 	path_renderer = path_rend
-	pathfinder = pf
-	round_manager = round_mgr
+	grid_manager = grid_mgr
+	map_root = map
 	print("[InputManager] Bereit")
+
+func update(delta: float) -> void:
+	pass
 
 func _input(event: InputEvent):
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			handle_left_click(event.position)
+			get_tree().root.set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			handle_right_click()
+			get_tree().root.set_input_as_handled()
 	elif event is InputEventKey and event.pressed:
 		if event.keycode == KEY_SPACE:
-			print("[InputManager] SPACE erkannt!")
 			handle_spacebar()
+			get_tree().root.set_input_as_handled()
 		elif event.keycode == KEY_1:
 			handle_stance_key(0)
+			get_tree().root.set_input_as_handled()
 		elif event.keycode == KEY_2:
 			handle_stance_key(1)
+			get_tree().root.set_input_as_handled()
 		elif event.keycode == KEY_3:
 			handle_stance_key(2)
+			get_tree().root.set_input_as_handled()
 	
 	if event is InputEventMouseMotion:
 		if path_renderer and merc_manager.get_selected_merc():
 			preview_path(event.position)
 
 func handle_spacebar() -> void:
-	print("[InputManager] round_manager = %s" % round_manager)
-	if round_manager:
-		print("[InputManager] Spacebar: Runde beendet, AP Reset")
-		round_manager.reset_all_ap()
-	else:
-		print("[InputManager] FEHLER: round_manager ist null!")
+	print("[InputManager] SPACE: Reset AP für alle Mercs")
+	if map_root:
+		var round_manager = map_root.get_round_manager()
+		if round_manager:
+			round_manager.reset_all_ap()
+			print("[InputManager] AP Reset erfolgreich")
 
 func handle_right_click() -> void:
+	print("[InputManager] Rechts-Klick: Deselect Merc")
 	merc_manager.select_merc(null)
-	path_renderer.clear_path()
+	if path_renderer:
+		path_renderer.clear_path()
 
 func handle_left_click(screen_pos: Vector2) -> void:
 	var grid_pos = screen_to_grid(screen_pos)
@@ -72,7 +83,7 @@ func handle_left_click(screen_pos: Vector2) -> void:
 	if grid_pos == Vector2i(-1, -1):
 		return
 	
-	print("[InputManager] Klick: Grid (%d, %d)" % [grid_pos.x, grid_pos.y])
+	print("[InputManager] Linke-Klick: Grid (%d, %d)" % [grid_pos.x, grid_pos.y])
 	grid_clicked.emit(grid_pos)
 	
 	# Check ob Merc getroffen wurde
@@ -86,13 +97,26 @@ func handle_left_click(screen_pos: Vector2) -> void:
 	if hit_merc:
 		merc_manager.select_merc(hit_merc)
 		merc_selected.emit(hit_merc)
-		print("[InputManager] Merc ausgewählt: %s" % hit_merc.merc_name)
+		var merc_pos = hit_merc.get_grid_position()
+		print("[InputManager] Merc selektiert: %s" % hit_merc.merc_name)
+		print("[InputManager] Position: Grid (%d, %d) | AP: %d/%d | Stance: %s" % [
+			merc_pos.x, merc_pos.y, 
+			hit_merc.get_current_ap(), 
+			hit_merc.get_max_ap(),
+			hit_merc.stance_component.get_stance_name()
+		])
 	else:
 		# Bewegung zum Grid-Tile
 		if merc_manager.get_selected_merc():
 			var selected_merc = merc_manager.get_selected_merc()
 			var start = selected_merc.get_grid_position()
 			var max_ap = selected_merc.get_current_ap()
+			
+			# Pathfinding
+			var pathfinder = merc_manager.pathfinder
+			if not pathfinder:
+				print("[InputManager] FEHLER: Pathfinder null!")
+				return
 			
 			# Route mit AP Limit finden
 			var path = pathfinder.find_path(start, grid_pos, max_ap)
@@ -101,10 +125,39 @@ func handle_left_click(screen_pos: Vector2) -> void:
 				var success = merc_manager.move_selected_merc(path)
 				if success:
 					merc_move_requested.emit(grid_pos)
-					path_renderer.clear_path()
-				print("[InputManager] Bewegungsbefehl zu Grid (%d, %d)" % [grid_pos.x, grid_pos.y])
+					if path_renderer:
+						path_renderer.clear_path()
+					print("[InputManager] Bewegung zu Grid (%d, %d) erfolgreich" % [grid_pos.x, grid_pos.y])
+				else:
+					print("[InputManager] Bewegung fehlgeschlagen!")
+			else:
+				print("[InputManager] Kein Weg zu Grid (%d, %d)" % [grid_pos.x, grid_pos.y])
+
+func handle_stance_key(stance: int) -> void:
+	var selected_merc = merc_manager.get_selected_merc()
+	
+	if not selected_merc:
+		print("[InputManager] Kein Merc selektiert!")
+		return
+	
+	var stance_names = ["Standing", "Crouch", "Prone"]
+	print("[InputManager] Taste %d gedrückt: Wechsel zu %s" % [stance + 1, stance_names[stance]])
+	
+	if selected_merc.change_stance(stance):
+		print("[InputManager] Stance-Wechsel erfolgreich!")
+		print("[InputManager] Neue Höhe: %.1f | AP: %d/%d" % [
+			selected_merc.get_stance_height(),
+			selected_merc.get_current_ap(),
+			selected_merc.get_max_ap()
+		])
+	else:
+		print("[InputManager] Stance-Wechsel fehlgeschlagen!")
 
 func screen_to_grid(screen_pos: Vector2) -> Vector2i:
+	if not camera_manager:
+		return Vector2i(-1, -1)
+	
+	var camera = camera_manager.camera
 	if not camera:
 		return Vector2i(-1, -1)
 	
@@ -150,6 +203,10 @@ func preview_path(screen_pos: Vector2) -> void:
 	var max_ap = selected_merc.get_current_ap()
 	var cache_key = str(start) + "_" + str(target_grid)
 	
+	var pathfinder = merc_manager.pathfinder
+	if not pathfinder:
+		return
+	
 	var full_path
 	
 	# Aus Cache oder berechnen - VOLLE Route ohne AP-Limit
@@ -180,10 +237,3 @@ func preview_path(screen_pos: Vector2) -> void:
 			blocked.append(tile)
 	
 	path_renderer.draw_path(walkable, blocked)
-
-func handle_stance_key(stance: int) -> void:
-	var selected_merc = merc_manager.get_selected_merc()
-	if selected_merc:
-		selected_merc.change_stance(stance)
-	else:
-		print("[InputManager] Kein Merc selektiert!")

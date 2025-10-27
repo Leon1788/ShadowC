@@ -1,150 +1,157 @@
 # map_01.gd
-# Map Orchestrator - mit Component-System
+# Verwaltet Szene, initialisiert Manager
 # Speicherort: res://scenes/maps/map_01/map_01.gd
 
 extends Node3D
 
-var camera_manager: CameraManager = null
-var grid_visual: GridVisual = null
+class_name Map01
+
+var grid_manager: GridManager = null
 var merc_manager: MercManager = null
+var camera_manager: CameraManager = null
 var input_manager: InputManager = null
-var grid_highlighter: GridHighlighter = null
-var path_renderer: PathRenderer = null
 var round_manager: RoundManager = null
+var path_renderer: PathRenderer = null
+var grid_visual: GridVisual = null
+var grid_highlighter: GridHighlighter = null
 
 func _ready():
-	print("\n==================================================")
-	print("MAP_01 STARTET - Component System")
-	print("==================================================\n")
+	print("\n=== MAP 01 INIT START ===\n")
 	
-	setup_camera()
-	setup_grid_visual()
-	setup_grid_manager()
-	setup_merc_manager()
-	setup_path_renderer()
-	setup_round_manager()
-	setup_input_manager()
-	setup_grid_highlighter()
+	setup_managers()
+	setup_connections()
 	
-	print("Map bereit!\n")
+	print("\n=== MAP 01 INIT COMPLETE ===\n")
 
-func setup_camera() -> void:
-	print("[Map01] Initialisiere Kamera...")
+func _process(delta: float):
+	if input_manager:
+		input_manager.update(delta)
 	
-	var camera = get_node_or_null("Camera3D")
-	
-	if not camera:
-		print("[Map01] FEHLER: Camera3D nicht gefunden!")
-		return
-	
-	camera_manager = CameraManager.new()
-	camera_manager.name = "CameraManager"
-	add_child(camera_manager)
-	camera_manager.initialize(camera, null)
-	camera_manager.target_position = Vector3(20.0, 20.0, 20.0)
-	camera_manager.current_position = Vector3(20.0, 20.0, 20.0)
-	camera.global_position = camera_manager.target_position
-	
-	print("[Map01] Kamera bereit")
+	if round_manager:
+		round_manager.update(delta)
 
-func setup_grid_visual() -> void:
-	print("[Map01] Suche GridVisual...")
+func setup_managers() -> void:
+	print("[Map01] Initialisiere Manager...")
 	
-	grid_visual = get_node_or_null("GridVisual")
-	
-	if not grid_visual:
-		print("[Map01] FEHLER: GridVisual nicht gefunden!")
-		return
-	
-	print("[Map01] GridVisual gefunden und aktiv")
-
-func setup_grid_manager() -> void:
-	print("[Map01] Initialisiere GridManager...")
-	
-	var grid_manager = GridManager.new()
+	# GridManager
+	grid_manager = GridManager.new()
+	grid_manager.name = "GridManager"
+	add_child(grid_manager)
 	grid_manager.initialize(self)
+	grid_manager.print_grid_info()
 	
-	print("[Map01] GridManager bereit")
-
-func setup_merc_manager() -> void:
-	print("[Map01] Initialisiere MercManager...")
-	
+	# MercManager
 	merc_manager = MercManager.new()
 	merc_manager.name = "MercManager"
 	add_child(merc_manager)
+	merc_manager.initialize()
 	
-	# GridManager für Pathfinding erstellen
-	var grid_manager = GridManager.new()
-	grid_manager.initialize(self)
+	# GridManager an MercManager übergeben
+	merc_manager.set_grid_manager(grid_manager)
+	grid_manager.set_merc_manager(merc_manager)
 	
-	merc_manager.initialize(grid_manager)
+	# Suche alle Mercs in der Szene und füge sie hinzu
+	var merc_nodes = find_all_mercs()
+	for merc in merc_nodes:
+		merc_manager.add_merc(merc)
+		merc.set_grid_manager(grid_manager)
 	
-	# Registriere alle Mercs die bereits in der Scene sind
-	register_mercs_from_scene()
+	print("[Map01] Mercs gefunden: %d" % merc_nodes.size())
 	
-	merc_manager.print_mercs()
-	print("[Map01] MercManager bereit")
-
-func register_mercs_from_scene() -> void:
-	print("[Map01] Registriere Mercs aus Scene...")
+	# CameraManager
+	camera_manager = CameraManager.new()
+	camera_manager.name = "CameraManager"
+	add_child(camera_manager)
+	var camera = get_node_or_null("Camera3D")
+	if camera:
+		camera_manager.initialize(camera, self)
+	else:
+		print("[Map01] FEHLER: Camera3D nicht in Szene!")
 	
-	var merc_count = 0
-	
-	# Suche alle Nodes die von MercEntity erben
-	for child in get_children():
-		if child is MercEntity:
-			merc_manager.register_merc(child)
-			merc_count += 1
-	
-	print("[Map01] %d Mercs registriert" % merc_count)
-
-func setup_path_renderer() -> void:
-	print("[Map01] Initialisiere PathRenderer...")
-	
+	# PathRenderer
 	path_renderer = PathRenderer.new()
 	path_renderer.name = "PathRenderer"
 	add_child(path_renderer)
-	path_renderer.initialize()
+	path_renderer.initialize(self, grid_manager)
 	
-	print("[Map01] PathRenderer bereit")
-
-func setup_input_manager() -> void:
-	print("[Map01] Initialisiere InputManager...")
+	# GridVisual
+	grid_visual = GridVisual.new()
+	grid_visual.name = "GridVisual"
+	add_child(grid_visual)
+	grid_visual.initialize(self, grid_manager)
 	
+	# InputManager (braucht alle anderen)
 	input_manager = InputManager.new()
 	input_manager.name = "InputManager"
 	add_child(input_manager)
+	input_manager.initialize(merc_manager, camera_manager, path_renderer, grid_manager, self)
 	
-	var camera = get_node("Camera3D")
-	var pathfinder = merc_manager.pathfinder
-	input_manager.initialize(merc_manager, camera, path_renderer, pathfinder, round_manager)
-	
-	print("[Map01] InputManager bereit")
-
-func setup_grid_highlighter() -> void:
-	print("[Map01] Initialisiere GridHighlighter...")
-	
-	grid_highlighter = GridHighlighter.new()
+	# GridHighlighter
+	var grid_highlighter = GridHighlighter.new()
 	grid_highlighter.name = "GridHighlighter"
 	add_child(grid_highlighter)
+	grid_highlighter.initialize(camera_manager.camera, merc_manager.pathfinder, merc_manager)
 	
-	var camera = get_node("Camera3D")
-	var pathfinder = merc_manager.pathfinder
-	grid_highlighter.initialize(camera, pathfinder, merc_manager)
-	
-	print("[Map01] GridHighlighter bereit")
-
-func setup_round_manager() -> void:
-	print("[Map01] Initialisiere RoundManager...")
-	
+	# RoundManager
 	round_manager = RoundManager.new()
 	round_manager.name = "RoundManager"
 	add_child(round_manager)
 	round_manager.initialize(merc_manager)
-	round_manager.start_game()
-	
-	print("[Map01] RoundManager bereit")
 
-func _process(delta: float):
-	if camera_manager:
-		camera_manager._process(delta)
+func find_all_mercs() -> Array:
+	var mercs = []
+	var all_children = get_all_children(self)
+	
+	for child in all_children:
+		if child is MercEntity:
+			mercs.append(child)
+	
+	return mercs
+
+func get_all_children(node: Node) -> Array:
+	var children = []
+	for child in node.get_children():
+		children.append(child)
+		children += get_all_children(child)
+	return children
+
+func setup_connections() -> void:
+	print("[Map01] Verbinde Signals...")
+	
+	if merc_manager and round_manager:
+		round_manager.round_started.connect(merc_manager._on_round_started)
+		round_manager.round_ended.connect(merc_manager._on_round_ended)
+	
+	if round_manager:
+		round_manager.new_turn.connect(func(): print("[Map01] === NEUER ZUGE ==="))
+
+func get_grid_manager() -> GridManager:
+	return grid_manager
+
+func get_merc_manager() -> MercManager:
+	return merc_manager
+
+func get_camera_manager() -> CameraManager:
+	return camera_manager
+
+func get_input_manager() -> InputManager:
+	return input_manager
+
+func get_path_renderer() -> PathRenderer:
+	return path_renderer
+
+func get_round_manager() -> RoundManager:
+	return round_manager
+
+func get_grid_highlighter() -> GridHighlighter:
+	return grid_highlighter
+
+func print_map_status() -> void:
+	print("\n=== MAP 01 STATUS ===")
+	print("Grid: %s" % ("OK" if grid_manager else "MISSING"))
+	print("Mercs: %s" % ("OK (%d)" % merc_manager.get_all_mercs().size() if merc_manager else "MISSING"))
+	print("Camera: %s" % ("OK" if camera_manager else "MISSING"))
+	print("Input: %s" % ("OK" if input_manager else "MISSING"))
+	print("Rounds: %s" % ("OK" if round_manager else "MISSING"))
+	print("Path Renderer: %s" % ("OK" if path_renderer else "MISSING"))
+	print("==================\n")

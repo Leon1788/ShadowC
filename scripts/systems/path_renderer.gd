@@ -9,6 +9,7 @@ class_name PathRenderer
 var path_container: Node3D = null
 var path_lines: MeshInstance3D = null
 var current_path: Array = []
+var grid_manager: GridManager = null
 
 const TILE_SIZE = 1.0
 const LINE_HEIGHT = 0.02
@@ -17,11 +18,17 @@ const LINE_COLOR = Color.GREEN
 func _ready():
 	pass
 
-func initialize() -> void:
+func initialize(map_root: Node3D = null, grid_mgr: GridManager = null) -> void:
+	print("[PathRenderer] Initialisiere...")
+	
+	grid_manager = grid_mgr
+	
 	# Container für alle Path-Linien
 	path_container = Node3D.new()
 	path_container.name = "PathContainer"
 	add_child(path_container)
+	
+	print("[PathRenderer] Bereit")
 
 func draw_path(walkable_path: Array, blocked_path: Array = []) -> void:
 	if walkable_path.is_empty() and blocked_path.is_empty():
@@ -31,46 +38,47 @@ func draw_path(walkable_path: Array, blocked_path: Array = []) -> void:
 	current_path = walkable_path.duplicate()
 	render_path_lines(walkable_path, blocked_path)
 
-func render_path_lines(path: Array, _blocked_path: Array) -> void:
+func render_path_lines(path: Array, blocked_path: Array) -> void:
 	# Cleanup altes
 	clear_path()
 	
-	# Grüne Linien
-	var immediate_mesh = ImmediateMesh.new()
-	immediate_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-	
-	for i in range(path.size() - 1):
-		var current_grid = path[i]
-		var next_grid = path[i + 1]
+	# Grüne Linien für erreichbare Tiles
+	if path.size() > 1:
+		var immediate_mesh = ImmediateMesh.new()
+		immediate_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
 		
-		var current_world = grid_to_world(current_grid)
-		var next_world = grid_to_world(next_grid)
+		for i in range(path.size() - 1):
+			var current_grid = path[i]
+			var next_grid = path[i + 1]
+			
+			var current_world = grid_to_world(current_grid)
+			var next_world = grid_to_world(next_grid)
+			
+			immediate_mesh.surface_add_vertex(current_world)
+			immediate_mesh.surface_add_vertex(next_world)
 		
-		immediate_mesh.surface_add_vertex(current_world)
-		immediate_mesh.surface_add_vertex(next_world)
+		immediate_mesh.surface_end()
+		
+		# Material grün
+		var line_material = StandardMaterial3D.new()
+		line_material.albedo_color = Color.GREEN
+		line_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		line_material.no_depth_test = false
+		
+		path_lines = MeshInstance3D.new()
+		path_lines.name = "PathLines"
+		path_lines.mesh = immediate_mesh
+		path_lines.set_surface_override_material(0, line_material)
+		path_container.add_child(path_lines)
 	
-	immediate_mesh.surface_end()
-	
-	# Material grün
-	var line_material = StandardMaterial3D.new()
-	line_material.albedo_color = Color.GREEN
-	line_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	line_material.no_depth_test = false
-	
-	path_lines = MeshInstance3D.new()
-	path_lines.name = "PathLines"
-	path_lines.mesh = immediate_mesh
-	path_lines.set_surface_override_material(0, line_material)
-	path_container.add_child(path_lines)
-	
-	# Rote Linien (blocked part)
-	if _blocked_path.size() > 1:
+	# Rote Linien für blockierte Tiles
+	if blocked_path.size() > 1:
 		var blocked_mesh = ImmediateMesh.new()
 		blocked_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
 		
-		for i in range(_blocked_path.size() - 1):
-			var current_grid = _blocked_path[i]
-			var next_grid = _blocked_path[i + 1]
+		for i in range(blocked_path.size() - 1):
+			var current_grid = blocked_path[i]
+			var next_grid = blocked_path[i + 1]
 			
 			var current_world = grid_to_world(current_grid)
 			var next_world = grid_to_world(next_grid)

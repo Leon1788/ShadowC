@@ -1,5 +1,5 @@
 # grid_highlighter.gd
-# Hebt Grid-Tiles hervor: Grün = erreichbar, Rot = nicht erreichbar
+# Hebt Grid-Tiles hervor: Gelb = unter Maus
 # Speicherort: res://scripts/systems/grid_highlighter.gd
 
 extends Node3D
@@ -7,17 +7,12 @@ extends Node3D
 class_name GridHighlighter
 
 var camera: Camera3D = null
-var pathfinder: Pathfinder = null
-var merc_manager: MercManager = null
 var highlighted_tile: Vector2i = Vector2i(-1, -1)
 var highlight_mesh: MeshInstance3D = null
 var highlight_material: StandardMaterial3D = null
-var reachability_cache: Dictionary = {}
-var last_selected_merc = null
-var last_max_ap: int = 0
 
 const TILE_SIZE = 1.0
-const HIGHLIGHT_HEIGHT = 0.03
+const HIGHLIGHT_HEIGHT = 0.02
 const GRID_SIZE = 40
 
 func _ready():
@@ -26,8 +21,6 @@ func _ready():
 func initialize(cam: Camera3D, pf: Pathfinder = null, merc_mgr: MercManager = null) -> void:
 	print("[GridHighlighter] Initialisiere...")
 	camera = cam
-	pathfinder = pf
-	merc_manager = merc_mgr
 	setup_highlight_mesh()
 	print("[GridHighlighter] Bereit")
 
@@ -35,7 +28,9 @@ func setup_highlight_mesh() -> void:
 	# Material für Highlight
 	highlight_material = StandardMaterial3D.new()
 	highlight_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	highlight_material.albedo_color = Color.YELLOW
 	highlight_material.albedo_color.a = 0.5
+	highlight_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 
 func _process(_delta: float):
 	update_highlight()
@@ -76,10 +71,6 @@ func highlight_tile(grid_pos: Vector2i) -> void:
 	if highlight_mesh:
 		highlight_mesh.queue_free()
 	
-	# Einfach gelb, keine Prüfung
-	highlight_material.albedo_color = Color.YELLOW
-	highlight_material.albedo_color.a = 0.5
-	
 	# Erstelle Quad für Highlight
 	var surface_tool = SurfaceTool.new()
 	surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -89,7 +80,7 @@ func highlight_tile(grid_pos: Vector2i) -> void:
 	var x1 = (grid_pos.x + 1) * TILE_SIZE
 	var z0 = grid_pos.y * TILE_SIZE
 	var z1 = (grid_pos.y + 1) * TILE_SIZE
-	var y = 0.015
+	var y = HIGHLIGHT_HEIGHT
 	
 	surface_tool.add_vertex(Vector3(x0, y, z0))
 	surface_tool.add_vertex(Vector3(x1, y, z0))

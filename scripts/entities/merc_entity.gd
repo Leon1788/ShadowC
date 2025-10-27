@@ -34,10 +34,14 @@ var stance_component: StanceComponent = null
 
 # References
 var capsule_mesh: MeshInstance3D = null
+var collision_shape_node: CollisionShape3D = null
+var capsule_shape: CapsuleShape3D = null
 var character_body: CharacterBody3D = null
+var grid_manager: GridManager = null
 
-const CAPSULE_HEIGHT = 1.8
-const CAPSULE_RADIUS = 0.3
+# Capsule Base Daten (aus merc.tscn)
+var capsule_radius: float = 0.3
+var capsule_base_height: float = 1.8
 
 func _ready():
 	if Engine.is_editor_hint():
@@ -53,20 +57,25 @@ func _process(delta: float):
 		movement_component.update_movement(delta)
 
 func setup_merc() -> void:
-	print("[MercEntity %s] Setup startet" % merc_name)
-	
 	# Suche bestehende Nodes
 	character_body = get_node_or_null("MercBody")
 	if character_body:
 		capsule_mesh = character_body.get_node_or_null("MercMesh")
+		var collider_node = character_body.get_node_or_null("MercCollider")
+		if collider_node and collider_node is CollisionShape3D:
+			collision_shape_node = collider_node
+			capsule_shape = collider_node.shape as CapsuleShape3D
+	
+	# Lese Capsule Daten aus merc.tscn
+	if capsule_shape:
+		capsule_radius = capsule_shape.radius
+		capsule_base_height = capsule_shape.height
 	
 	# Erstelle Komponenten
 	create_components()
 	
 	# Initialisiere Komponenten
 	initialize_components()
-	
-	print("[MercEntity %s] Setup fertig" % merc_name)
 
 func create_components() -> void:
 	# APComponent
@@ -108,12 +117,52 @@ func initialize_components() -> void:
 		selection_component.initialize(capsule_mesh, Color.BLUE)
 	
 	# Stance (braucht AP)
-	stance_component.initialize(ap_component)
+	stance_component.initialize(ap_component, grid_manager, self)
+	stance_component.stance_changed.connect(_on_stance_changed)
 	
-	# Movement (braucht AP)
-	movement_component.initialize(grid_x, grid_z, self, ap_component)
+	# Movement (braucht AP + Stance + GridManager)
+	movement_component.initialize(grid_x, grid_z, self, ap_component, stance_component, grid_manager)
 	movement_component.movement_started.connect(_on_movement_started)
 	movement_component.movement_completed.connect(_on_movement_completed)
+	
+	# MercEntity Position auf Grid-Position setzen
+	var grid_world_pos = movement_component.grid_to_world(Vector2i(grid_x, grid_z))
+	position = grid_world_pos
+	
+	# Initiale Capsule-Höhe setzen
+	update_capsule_for_stance()
+
+func set_grid_manager(grid_mgr: GridManager) -> void:
+	grid_manager = grid_mgr
+	
+	# Auch StanceComponent aktualisieren!
+	if stance_component:
+		stance_component.set_grid_manager(grid_mgr)
+
+func update_capsule_for_stance() -> void:
+	if not stance_component or not character_body:
+		return
+	
+	var stance_height = stance_component.get_stance_height()
+	
+	# Update Mesh Height UND Radius (auf merc.tscn Base-Wert)
+	if capsule_mesh and capsule_mesh.mesh is CapsuleMesh:
+		var capsule_mesh_obj = capsule_mesh.mesh as CapsuleMesh
+		capsule_mesh_obj.height = stance_height
+		capsule_mesh_obj.radius = capsule_radius  # Immer Base-Radius aus merc.tscn!
+		
+		# Mesh Position.Y = Height/2 damit Bottom bei Y=0 bleibt!
+		var mesh_y = stance_height / 2.0
+		capsule_mesh.position.y = mesh_y
+	
+	# Update CollisionShape Height UND Radius (auf merc.tscn Base-Wert)
+	if capsule_shape and collision_shape_node:
+		capsule_shape.height = stance_height
+		capsule_shape.radius = capsule_radius  # Immer Base-Radius aus merc.tscn!
+		
+		# CollisionShape3D Node Position.Y = Height/2 damit Bottom bei Y=0 bleibt!
+		var shape_y = stance_height / 2.0
+		collision_shape_node.position.y = shape_y
 
 # ============ PUBLIC API ============
 
@@ -197,20 +246,27 @@ func get_current_stance() -> int:
 		return stance_component.get_current_stance()
 	return 0
 
+func get_stance_height() -> float:
+	if stance_component:
+		return stance_component.get_stance_height()
+	return capsule_base_height
+
 func get_merc_name() -> String:
 	return merc_name
 
-# ============ SIGNALS ============
+# ============ SIGNAL HANDLERS ============
 
 func _on_health_changed(current: int, max: int) -> void:
-	print("[%s] Health changed: %d/%d" % [merc_name, current, max])
+	pass
 
 func _on_died() -> void:
-	print("[%s] Merc ist gefallen!" % merc_name)
 	queue_free()
 
+func _on_stance_changed(stance: int) -> void:
+	update_capsule_for_stance()
+
 func _on_movement_started(target: Vector2i) -> void:
-	print("[%s] Bewegung zu Grid (%d, %d)" % [merc_name, target.x, target.y])
+	pass
 
 func _on_movement_completed(final_pos: Vector2i) -> void:
-	print("[%s] Angekommen bei Grid (%d, %d)" % [merc_name, final_pos.x, final_pos.y])
+	pass
