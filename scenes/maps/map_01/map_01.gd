@@ -1,5 +1,5 @@
 # map_01.gd
-# Map Orchestrator
+# Map Orchestrator - registriert bestehende Mercs
 # Speicherort: res://scenes/maps/map_01/map_01.gd
 
 extends Node3D
@@ -19,6 +19,7 @@ func _ready():
 	
 	setup_camera()
 	setup_grid_visual()
+	setup_grid_manager()
 	setup_merc_manager()
 	setup_path_renderer()
 	setup_round_manager()
@@ -57,29 +58,48 @@ func setup_grid_visual() -> void:
 	
 	print("[Map01] GridVisual gefunden und aktiv")
 
+func setup_grid_manager() -> void:
+	print("[Map01] Initialisiere GridManager...")
+	
+	var grid_manager = GridManager.new()
+	grid_manager.initialize(self)
+	
+	print("[Map01] GridManager bereit")
+
 func setup_merc_manager() -> void:
 	print("[Map01] Initialisiere MercManager...")
 	
 	merc_manager = MercManager.new()
-	print("[Map01] MercManager.new() erfolgreich")
-	
 	merc_manager.name = "MercManager"
 	add_child(merc_manager)
-	print("[Map01] MercManager als Child hinzugefügt")
 	
-	# GridManager erstellen für Pathfinding
+	# GridManager für Pathfinding erstellen
 	var grid_manager = GridManager.new()
 	grid_manager.initialize(self)
 	
-	merc_manager.initialize("res://scenes/entities/merc/merc.tscn", grid_manager)
-	print("[Map01] MercManager.initialize() aufgerufen")
+	merc_manager.initialize(grid_manager)
 	
-	# Spawn Test-Mercs
-	merc_manager.spawn_merc(15, 15, "Merc_Alpha")
-	merc_manager.spawn_merc2(20, 20, "Merc_Bravo")
+	# Registriere alle Mercs die bereits in der Scene sind
+	register_mercs_from_scene()
 	
 	merc_manager.print_mercs()
 	print("[Map01] MercManager bereit")
+
+func register_mercs_from_scene() -> void:
+	print("[Map01] Registriere Mercs aus Scene...")
+	
+	var merc_count = 0
+	
+	# Suche alle Nodes mit Merc-Klasse
+	for child in get_children():
+		if child is Merc:
+			merc_manager.register_merc(child)
+			merc_count += 1
+		elif child is Merc2:
+			merc_manager.register_merc(child)
+			merc_count += 1
+	
+	print("[Map01] %d Mercs registriert" % merc_count)
 
 func setup_path_renderer() -> void:
 	print("[Map01] Initialisiere PathRenderer...")

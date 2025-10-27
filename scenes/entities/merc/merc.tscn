@@ -1,11 +1,23 @@
-[gd_scene load_steps=2 format=3 uid="uid://merc001scene"]
+[gd_scene load_steps=4 format=3 uid="uid://merc001scene"]
 
-[ext_resource type="Script" path="res://scripts/entities/merc.gd" id="1_merc"]
+[ext_resource type="Script" uid="uid://dr7bjrm4agnm2" path="res://scripts/entities/merc.gd" id="1_merc"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_merc"]
+radius = 0.3
+height = 1.8
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_merc"]
+radius = 0.3
+height = 1.8
 
 [node name="Merc" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.9, 0.5)
 script = ExtResource("1_merc")
-merc_name = "Merc_01"
-grid_x = 10
-grid_z = 10
-health = 100
-max_health = 100
+
+[node name="MercBody" type="CharacterBody3D" parent="."]
+
+[node name="MercMesh" type="MeshInstance3D" parent="MercBody"]
+mesh = SubResource("CapsuleMesh_merc")
+
+[node name="MercCollider" type="CollisionShape3D" parent="MercBody"]
+shape = SubResource("CapsuleShape3D_merc")

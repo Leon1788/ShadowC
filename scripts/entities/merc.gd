@@ -7,7 +7,22 @@ extends Node3D
 
 class_name Merc
 
-# Internal vars FIRST
+# Inspector Properties - wie Cover editierbar
+@export var grid_x: int = 0:
+	set(value):
+		grid_x = clamp(value, 0, 39)
+		update_position()
+
+@export var grid_z: int = 0:
+	set(value):
+		grid_z = clamp(value, 0, 39)
+		update_position()
+
+@export var merc_name: String = "Merc_01"
+@export var health: int = 100
+@export var max_health: int = 100
+
+# Internal vars
 var heights = [0.3, 0.8, 3.0]
 var current_height: float = 0.8
 var capsule_mesh: MeshInstance3D = null
@@ -23,32 +38,12 @@ var stance_height = {
 	STANCE.CROUCH: 1.0,
 	STANCE.PRONE: 0.3
 }
-var facing_direction: Vector2i = Vector2i(1, 0)  # Richtung wohin Merc schaut
+var facing_direction: Vector2i = Vector2i(1, 0)
 
 const TILE_SIZE = 1.0
 const CAPSULE_HEIGHT = 1.8
 const CAPSULE_RADIUS = 0.3
 const MAX_AP = 50
-
-# Inspector Properties
-@export var merc_name: String = "Merc_01"
-@export var grid_x: int = 10:
-	set(value):
-		grid_x = clamp(value, 0, 39)
-		update_position()
-
-@export var grid_z: int = 10:
-	set(value):
-		grid_z = clamp(value, 0, 39)
-		update_position()
-
-@export_enum("0.3m", "0.8m", "3m") var height_type: int = 1:
-	set(value):
-		height_type = value
-		setup_merc()
-
-@export var health: int = 100
-@export var max_health: int = 100
 
 # Runtime
 var is_selected: bool = false
@@ -74,8 +69,11 @@ func _process(delta: float):
 		update_movement(delta)
 
 func setup_merc() -> void:
+	if Engine.is_editor_hint():
+		return
+	
 	print("[Merc %s] Setup startet" % merc_name)
-	current_height = heights[height_type]
+	current_height = heights[1]
 	
 	# Cleanup
 	if capsule_mesh:
@@ -213,21 +211,17 @@ func reset_ap() -> void:
 	current_ap = max_ap
 
 func change_stance(new_stance: int) -> bool:
-	# Gleiche Stance = kein Wechsel
 	if new_stance == current_stance:
 		return false
 	
-	# AP Check
 	if current_ap < 1:
 		print("[Merc %s] Nicht genug AP für Stance-Wechsel!" % merc_name)
 		return false
 	
-	# Prone = 2 Tiles belegen - Check ob möglich
 	if new_stance == STANCE.PRONE:
 		var behind_pos = Vector2i(grid_x, grid_z) + facing_direction
 		print("[Merc %s] Prone Check: hinter Position (%d, %d)" % [merc_name, behind_pos.x, behind_pos.y])
 	
-	# Stance wechseln
 	current_stance = new_stance
 	current_ap -= 1
 	update_stance_visual()
